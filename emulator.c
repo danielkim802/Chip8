@@ -1,3 +1,4 @@
+#include "chip8_structs.h"
 #include "chip8_cpu.h"
 
 int main(void) {
