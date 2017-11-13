@@ -1,5 +1,3 @@
-struct chip8_cpu;
-
 // opcode execute functions
 void chip8_func_call(struct chip8_cpu* cpu, unsigned short opcode);
 void chip8_func_disp_clear(struct chip8_cpu* cpu, unsigned short opcode);

@@ -33,3 +33,4 @@ static const unsigned char FUNC_MEM_SPR 	= 31;
 static const unsigned char FUNC_BCD 		= 32;
 static const unsigned char FUNC_MEM_DUMP 	= 33;
 static const unsigned char FUNC_MEM_LOAD 	= 34;
+static const unsigned char FUNC_INVALID 	= 34;

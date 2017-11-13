@@ -1,6 +1,28 @@
+#include "chip8_structs.h"
 #include "chip8_cpu.h"
 #include "chip8_exec.h"
 #include "constants.h"
+
+// font set
+unsigned char chip8_fontset[80] =
+{ 
+	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+	0x20, 0x60, 0x20, 0x20, 0x70, // 1
+	0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+	0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+	0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+	0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+	0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+	0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+	0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+	0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+	0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+	0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+	0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+	0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+	0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+	0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+};
 
 // initialize cpu
 void chip8_initialize(struct chip8_cpu* cpu) {
@@ -9,7 +31,10 @@ void chip8_initialize(struct chip8_cpu* cpu) {
 		cpu->mem[i] = 0;
 	}
 
-	// copy over font set
+	// load font set
+	for (int i = 0; i < 80; i ++) {
+		cpu->mem[i] = chip8_fontset[i];
+	}
 
 	// set registers to 0
 	for (int i = 0; i < 16; i ++) {
@@ -49,7 +74,97 @@ unsigned short chip8_fetch_opcode(struct chip8_cpu* cpu) {
 
 // decode opcode; return key to function table
 unsigned char chip8_decode_opcode(struct chip8_cpu* cpu, unsigned short opcode) {
-	return 0;
+	switch (opcode >> 12) {
+		case 0x0:
+			if (opcode == 0x00E0) {
+				return FUNC_DISP_CLEAR;
+			} else if (opcode == 0x00EE) {
+				return FUNC_FLOW_RETURN;
+			} else {
+				return FUNC_CALL;
+			}
+		case 0x1:
+			return FUNC_FLOW_GOTO;
+		case 0x2:
+			return FUNC_FLOW_CALL;
+		case 0x3:
+			return FUNC_COND_IMM_EQ;
+		case 0x4:
+			return FUNC_COND_IMM_NE;
+		case 0x5:
+			return FUNC_COND_EQ;
+		case 0x6:
+			return FUNC_CONST_SET;
+		case 0x7:
+			return FUNC_CONST_ADD;
+		case 0x8:
+			switch (opcode & 0xF) {
+				case 0x0:
+					return FUNC_ASSIGN_SET;
+				case 0x1:
+					return FUNC_BITOP_OR;
+				case 0x2:
+					return FUNC_BITOP_AND;
+				case 0x3:
+					return FUNC_BITOP_XOR;
+				case 0x4:
+					return FUNC_MATH_ADDEQ;
+				case 0x5:
+					return FUNC_MATH_SUBEQ;
+				case 0x6:
+					return FUNC_BITOP_SRL;
+				case 0x7:
+					return FUNC_MATH_SUB;
+				case 0xE:
+					return FUNC_BITOP_SLL;
+				default:
+					return FUNC_INVALID;
+			}
+		case 0x9:
+			return FUNC_COND_NE;
+		case 0xA:
+			return FUNC_MEM_SETI;
+		case 0xB:
+			return FUNC_FLOW_PC;
+		case 0xC:
+			return FUNC_RAND_AND;
+		case 0xD:
+			return FUNC_DISP_DRAW;
+		case 0xE:
+			switch (opcode & 0xFF) {
+				case 0x9E:
+					return FUNC_KEYOP_EQ;
+				case 0xA1:
+					return FUNC_KEYOP_NE;
+				default:
+					return FUNC_INVALID;
+			}
+		case 0xF:
+			switch (opcode & 0xFF) {
+				case 0x07:
+					return FUNC_TIMER_DELAY;
+				case 0x0A:
+					return FUNC_KEYOP_WAIT;
+				case 0x15:
+					return FUNC_TIMER_SET;
+				case 0x18:
+					return FUNC_SOUND_SET;
+				case 0x1E:
+					return FUNC_MEM_ADDEQ;
+				case 0x29:
+					return FUNC_MEM_SPR;
+				case 0x33:
+					return FUNC_BCD;
+				case 0x55:
+					return FUNC_MEM_DUMP;
+				case 0x65:
+					return FUNC_MEM_LOAD;
+				default:
+					return FUNC_INVALID;
+			}
+		default:
+			return FUNC_INVALID;
+	}
 }
 
 // execute opcode given a key
