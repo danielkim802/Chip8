@@ -1,7 +1,8 @@
+#include <stdio.h>
+#include "constants.h"
 #include "chip8_structs.h"
 #include "chip8_cpu.h"
 #include "chip8_exec.h"
-#include "constants.h"
 
 // font set
 unsigned char chip8_fontset[80] =
@@ -27,30 +28,26 @@ unsigned char chip8_fontset[80] =
 // initialize cpu
 void chip8_initialize(struct chip8_cpu* cpu) {
 	// set memory to zero
-	for (int i = 0; i < 4096; i ++) {
+	for (int i = 0; i < 4096; i ++)
 		cpu->mem[i] = 0;
-	}
 
 	// load font set
-	for (int i = 0; i < 80; i ++) {
+	for (int i = 0; i < 80; i ++)
 		cpu->mem[i] = chip8_fontset[i];
-	}
 
 	// set registers to 0
-	for (int i = 0; i < 16; i ++) {
+	for (int i = 0; i < 16; i ++)
 		cpu->V[i] = 0;
-	}
 	cpu->I = 0;
 	cpu->PC = 0x200;
 	cpu->SP = 0;
 
 	// initialize io
-	for (int i = 0; i < 16; i ++) {
+	for (int i = 0; i < 16; i ++)
 		cpu->keyboard[i] = 0;
-	}
-	for (int i = 0; i < 32 * 64; i ++) {
-		cpu->display[i] = 0;
-	}
+	for (int i = 0; i < 32; i ++)
+		for (int j = 0; j < 64; j ++)
+			cpu->display[i][j] = 0;
 
 	// initialize timers
 	cpu->delay_timer = 0;
@@ -69,6 +66,7 @@ unsigned short chip8_fetch_opcode(struct chip8_cpu* cpu) {
 	unsigned short pc = cpu->PC;
 	unsigned char msb = cpu->mem[pc];
 	unsigned char lsb = cpu->mem[pc + 1];
+	printf("%*x\n", 4, (msb << 8) | lsb);
 	return (msb << 8) | lsb;
 }
 
@@ -169,6 +167,11 @@ unsigned char chip8_decode_opcode(struct chip8_cpu* cpu, unsigned short opcode) 
 
 // execute opcode given a key
 void chip8_exec_opcode(struct chip8_cpu* cpu, unsigned short opcode, unsigned char opcode_key) {
+	// TODO: check for invalid opcode key
+	if (opcode_key == FUNC_INVALID) {
+		
+	}
+
 	// make jump table
 	static void (*chip8_opcode_functions[35]) (struct chip8_cpu*, unsigned short) = {
 		chip8_func_call,
@@ -212,6 +215,77 @@ void chip8_exec_opcode(struct chip8_cpu* cpu, unsigned short opcode, unsigned ch
 	chip8_opcode_functions[opcode_key](cpu, opcode);
 }
 
+// emulates a single cycle of the processor
+void chip8_cycle(struct chip8_cpu* cpu) {
+	unsigned short opcode = chip8_fetch_opcode(cpu);
+	unsigned char opcode_key = chip8_decode_opcode(cpu, opcode);
+	chip8_exec_opcode(cpu, opcode, opcode_key);
+	cpu->PC += 2;
+	if (cpu->delay_timer)
+		cpu->delay_timer -= 1;
+	if (cpu->sound_timer)
+		cpu->sound_timer -= 1;
+}
+
+// prints out the display
+void chip8_print_display(struct chip8_cpu* cpu) {
+	// print top border
+	printf("+-");
+	for (int i = 0; i < 63; i ++)
+		printf("--");
+	printf("-+\n");
+
+	// print display
+	for (int i = 0; i < 32; i ++) {
+		printf("|");
+		for (int j = 0; j < 64; j ++) {
+			if (cpu->display[i][j] == 0)
+				printf("  ");
+			else
+				printf("**");
+		}
+		printf("|\n");
+	}
+
+	// print bottom border
+	printf("+-");
+	for (int i = 0; i < 63; i ++)
+		printf("--");
+	printf("-+\n");
+}
+
+// prints out state of the cpu
+void chip8_print_state(struct chip8_cpu* cpu) {
+	// print registers
+	printf("registers:\n");
+	for (int i = 0; i < 16; i ++)
+		printf("   %x ", i);
+	printf("\n");
+	for (int i = 0; i < 16; i ++)
+		printf("%*x ", 4, cpu->V[i]);
+	printf("\n");
+
+	// print stack
+	printf("stack:\n");
+	for (int i = 0; i < 16; i ++)
+		printf("%*x ", 4, cpu->stack[i]);
+	printf("\n");
+	for (int i = 0; i < 16; i ++) {
+		if (cpu->SP == i)
+			printf("   ^ ");
+		else
+			printf("     ");
+	}
+	printf("\n");
+
+	// print I
+	printf("I: %x", cpu->I);
+	printf("\n");
+
+	// print PC
+	printf("PC: %x", cpu->PC);
+	printf("\n");
+}
 
 
 

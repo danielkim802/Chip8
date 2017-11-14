@@ -19,7 +19,7 @@ void chip8_func_disp_clear(struct chip8_cpu* cpu, unsigned short opcode) {
 
 // 0x00EE
 void chip8_func_flow_return(struct chip8_cpu* cpu, unsigned short opcode) {
-	// error checking
+	// TODO: error checking
 
 	// pop address from the stack and assign to pc
 	cpu->PC = cpu->stack[--cpu->SP];
@@ -142,7 +142,8 @@ void chip8_func_math_addeq(struct chip8_cpu* cpu, unsigned short opcode) {
 	unsigned char y = (opcode & 0x00F0) >> 4;
 
 	// get carry bit
-	long result = cpu->V[x] + cpu->V[y];
+	cpu->V[0xF] = 0;
+	unsigned long result = cpu->V[x] + cpu->V[y];
 	if ((result >> 16) & 1)
 		cpu->V[0xF] = 1;
 
@@ -155,8 +156,7 @@ void chip8_func_math_subeq(struct chip8_cpu* cpu, unsigned short opcode) {
 	unsigned char x = (opcode & 0x0F00) >> 8;
 	unsigned char y = (opcode & 0x00F0) >> 4;
 
-	// TODO: get borrow bit
-
+	cpu->V[0xF] = cpu->V[x] > cpu->V[y];
 	cpu->V[x] -= cpu->V[y];	
 }
 
@@ -179,8 +179,7 @@ void chip8_func_math_sub(struct chip8_cpu* cpu, unsigned short opcode) {
 	unsigned char x = (opcode & 0x0F00) >> 8;
 	unsigned char y = (opcode & 0x00F0) >> 4;
 
-	// TODO: get borrow bit
-
+	cpu->V[0xF] = cpu->V[y] > cpu->V[x];
 	cpu->V[x] = cpu->V[y] - cpu->V[x];
 }
 
@@ -244,7 +243,24 @@ void chip8_func_disp_draw(struct chip8_cpu* cpu, unsigned short opcode) {
 	unsigned char y = (opcode & 0x00F0) >> 4;
 	unsigned char imm = opcode & 0x000F;
 
-	// TODO: draw stuff
+	// draw stuff
+	unsigned char x_start = cpu->V[x];
+	unsigned char y_start = cpu->V[y];
+	cpu->V[0xF] = 0;
+	for (int i = 0; i < imm; i ++) {
+		// fetch sprite line
+		unsigned char spr_line = cpu->mem[cpu->I + i];
+
+		// xor into display
+		for (int j = 0; j < 8; j ++) {
+			unsigned char pixel = (spr_line >> (8 - j - 1)) & 1;
+			if (y_start + i < 32 && x_start + j < 64) {
+				if (cpu->display[y_start + i][x_start + j] == 1 && pixel == 1)
+					cpu->V[0xF] = 1;
+				cpu->display[y_start + i][x_start + j] ^= pixel;
+			}
+		}
+	}
 }
 
 // 0xEX9E
@@ -252,7 +268,8 @@ void chip8_func_keyop_eq(struct chip8_cpu* cpu, unsigned short opcode) {
 	// get values
 	unsigned char x = (opcode & 0x0F00) >> 8;
 
-	// TODO: get key press
+	if (cpu->keyboard[cpu->V[x] & 0xF] == 1)
+		cpu->PC += 2;
 }
 
 // 0xEXA1
@@ -260,7 +277,8 @@ void chip8_func_keyop_ne(struct chip8_cpu* cpu, unsigned short opcode) {
 	// get values
 	unsigned char x = (opcode & 0x0F00) >> 8;
 
-	// TODO: get key press
+	if (cpu->keyboard[cpu->V[x] & 0xF] != 1)
+		cpu->PC += 2;
 }
 
 // 0xFX07
@@ -276,7 +294,15 @@ void chip8_func_keyop_wait(struct chip8_cpu* cpu, unsigned short opcode) {
 	// get values
 	unsigned char x = (opcode & 0x0F00) >> 8;
 	
-	// TODO: blocking operation
+	unsigned char key = 0x10;
+	for (int i = 0; i < 16; i ++) {
+		if (cpu->keyboard[i] == 1)
+			key = i;
+	}
+	if (key != 0x10)
+		cpu->V[x] = key;
+	else
+		cpu->PC -= 2;
 }
 
 // 0xFX15
@@ -316,7 +342,10 @@ void chip8_func_bcd(struct chip8_cpu* cpu, unsigned short opcode) {
 	// get values
 	unsigned char x = (opcode & 0x0F00) >> 8;
 
-	// TODO: bcd
+	unsigned short val = cpu->V[x];
+	cpu->mem[cpu->I + 2] = (val / 1  ) % 10;
+	cpu->mem[cpu->I + 1] = (val / 10 ) % 10;
+	cpu->mem[cpu->I + 0] = (val / 100) % 10;
 }
 
 // 0xFX55
@@ -326,26 +355,21 @@ void chip8_func_mem_dump(struct chip8_cpu* cpu, unsigned short opcode) {
 
 	// TODO: check bounds
 
-	unsigned char offset = cpu->I;
-	cpu->I += x + 1;
-	for (int i = 0; i < x + 1; i ++) {
-		cpu->mem[offset + i * 2] = cpu->V[i] >> 8;
-		cpu->mem[offset + i * 2 + 1] = cpu->V[i] & 0xFF;
+	unsigned short offset = cpu->I;
+	for (int i = 0; i < x + 1; i ++, cpu->I ++) {
+		cpu->mem[offset + i] = cpu->V[i];
 	}
 }
 
-// 0xF65
+// 0xFX65
 void chip8_func_mem_load(struct chip8_cpu* cpu, unsigned short opcode) {
 	// get values
 	unsigned char x = (opcode & 0x0F00) >> 8;
 
 	// TODO: check bounds
 
-	unsigned char offset = cpu->I;
-	cpu->I += x + 1;
-	for (int i = 0; i < x + 1; i ++) {
-		cpu->V[i] = 0;
-		cpu->V[i] |= cpu->mem[offset + i] << 8;
-		cpu->V[i] |= cpu->mem[offset + i * 2];
+	unsigned short offset = cpu->I;
+	for (int i = 0; i < x + 1; i ++, cpu->I ++) {
+		cpu->V[i] = cpu->mem[offset + i];
 	}
 }
