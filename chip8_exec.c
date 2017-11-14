@@ -7,7 +7,7 @@
 
 // 0x0NNN
 void chip8_func_call(struct chip8_cpu* cpu, unsigned short opcode) {
-	printf("called");
+	// TODO: write this function
 }
 
 // 0x00E0

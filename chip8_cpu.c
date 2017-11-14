@@ -242,7 +242,7 @@ void chip8_print_display(struct chip8_cpu* cpu) {
 			if (cpu->display[i][j] == 0)
 				printf("  ");
 			else
-				printf("**");
+				printf("\u2591\u2591");
 		}
 		printf("|\n");
 	}
