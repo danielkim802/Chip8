@@ -17,19 +17,13 @@ int main(int argc, char* argv[]) {
 
 	chip8_load_rom(&cpu, &rom[0], rom_size);
 
-	int i = 0;
+	// main loop
 	while (1) {
-		if (i == 25) {
-			cpu.keyboard[1] = 1;
-			cpu.keyboard[0xC] = 1;
-		}
-		puts("\033[44A");
-
-		chip8_cycle(&cpu);
-		chip8_print_display(&cpu);
-		chip8_print_state(&cpu);
-		for (int i = 0; i < 1000000; i ++);
-		i ++;
+		puts("\033[44A");					// overwrite previous print
+		chip8_cycle(&cpu);					// step cpu cycle
+		chip8_print_display(&cpu);			// print display
+		chip8_print_state(&cpu);			// print cpu state
+		for (int i = 0; i < 1000000; i ++);	// delay
 	}
 	
 	return 0;
